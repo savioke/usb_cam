@@ -90,6 +90,16 @@ class UsbCam {
   void set_v4l_parameter(const std::string& param, int value);
   void set_v4l_parameter(const std::string& param, const std::string& value);
 
+  // Set/get extension unit controls
+  // See https://www.kernel.org/doc/html/v4.19/media/v4l-drivers/uvcvideo.html
+  // Returns true if executed successfully, false otherwise
+  bool extension_unit_control(unsigned char unit, unsigned char selector, unsigned char query, unsigned short size, unsigned char *data);
+
+  // First executes a query for the correct size of the selected extension, then sets it to the provided data using
+  // extension_unit_control().
+  // Returns true if executed successfully, false otherwise
+  bool extension_unit_control_set(unsigned char unit, unsigned char selector, unsigned char *data);
+
   static io_method io_method_from_string(const std::string& str);
   static pixel_format pixel_format_from_string(const std::string& str);
 

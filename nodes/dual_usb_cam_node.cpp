@@ -41,6 +41,8 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <sstream>
 #include <std_srvs/Empty.h>
+#include <XmlRpcValue.h>
+#include <XmlRpcException.h>
 
 /**
  * Slightly modified version of the original UsbCamNode
@@ -220,6 +222,47 @@ public:
       if (focus_ >= 0)
       {
         cam_.set_v4l_parameter("focus_absolute", focus_);
+      }
+    }
+
+    // check UVC extension unit controls
+    XmlRpc::XmlRpcValue uvc_xu_controls_params;
+    if (node_.getParam("uvc_xu_controls", uvc_xu_controls_params))
+    {
+      try
+      {
+        for (int i = 0; i < uvc_xu_controls_params.size(); ++i)
+        {
+          XmlRpc::XmlRpcValue controls_param = uvc_xu_controls_params[i];
+          int unit = static_cast<int>(controls_param["unit"]);
+          int selector = static_cast<int>(controls_param["selector"]);
+          int data = static_cast<int>(controls_param["data"]);
+          if (unit < 0 || unit > 255 || selector < 0 || selector > 255 || data < 0 || data > 255)
+          {
+            ROS_ERROR("Invalid uvc_xu controls parameter.");
+          }
+          else
+          {
+            unsigned char data_ch = static_cast<unsigned char>(data);
+            bool success = cam_.extension_unit_control_set(
+                static_cast<unsigned char>(unit),
+                static_cast<unsigned char>(selector),
+                &data_ch);
+            if (success)
+            {
+              ROS_INFO("UVC XU controls for unit %d, selector %d set successfully.", unit, selector);
+            }
+            else
+            {
+              ROS_ERROR("Could not set UVC XU controls for unit %d, selector %d.", unit, selector);
+            }
+          }
+        }
+      }
+      catch (const XmlRpc::XmlRpcException &e)
+      {
+        ROS_ERROR("Error parsing parameter 'uvc_xu_controls': code: %i, message: %s",
+            e.getCode(), e.getMessage().c_str());
       }
     }
   }
