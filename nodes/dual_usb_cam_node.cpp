@@ -225,6 +225,7 @@ public:
       }
     }
 
+    // check UVC extension unit controls
     XmlRpc::XmlRpcValue uvc_xu_controls_params;
     if (node_.getParam("uvc_xu_controls", uvc_xu_controls_params))
     {
@@ -235,17 +236,18 @@ public:
           XmlRpc::XmlRpcValue controls_param = uvc_xu_controls_params[i];
           int unit = static_cast<int>(controls_param["unit"]);
           int selector = static_cast<int>(controls_param["selector"]);
-          XmlRpc::XmlRpcValue::BinaryData data = controls_param["data"].operator XmlRpc::XmlRpcValue::BinaryData&();
-          if (unit < 0 || unit > 255 || selector < 0 || selector > 255 || data.empty())
+          int data = static_cast<int>(controls_param["data"]);
+          if (unit < 0 || unit > 255 || selector < 0 || selector > 255 || data < 0 || data > 255)
           {
             ROS_ERROR("Invalid uvc_xu controls parameter.");
           }
           else
           {
+            unsigned char data_ch = static_cast<unsigned char>(data);
             bool success = cam_.extension_unit_control_set(
                 static_cast<unsigned char>(unit),
                 static_cast<unsigned char>(selector),
-                reinterpret_cast<unsigned char*>(data.data()));
+                &data_ch);
             if (success)
             {
               ROS_INFO("UVC XU controls for unit %d, selector %d set successfully.", unit, selector);
