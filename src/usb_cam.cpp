@@ -47,6 +47,8 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <linux/uvcvideo.h>
+#include <linux/usb/video.h>
 
 #include <ros/ros.h>
 #include <boost/lexical_cast.hpp>
@@ -967,6 +969,40 @@ void UsbCam::init_device(int image_width, int image_height, int framerate)
       init_userp(fmt.fmt.pix.sizeimage);
       break;
   }
+}
+
+bool UsbCam::extension_unit_control(unsigned char unit, unsigned char selector, unsigned char query,
+    unsigned short size, unsigned char *data)
+{
+  struct uvc_xu_control_query xquery;
+  memset(&xquery, 0, sizeof(xquery));
+
+  xquery.unit = (__u8)unit;
+  xquery.selector = (__u8)selector;
+  xquery.query = (__u8)query;
+  xquery.size = (__u16)size;
+  xquery.data = (__u8*)data;
+
+  int ret = ioctl(fd_, UVCIOC_CTRL_QUERY, &xquery);
+  if (ret < 0)
+  {
+    ROS_ERROR_STREAM("Cannot execute UVC XU query on '" << camera_dev_ << "': " << errno << ", " << strerror(errno));
+    return false;
+  }
+  return true;
+}
+
+bool UsbCam::extension_unit_control_set(unsigned char unit, unsigned char selector, unsigned char *data)
+{
+  // first retrieve correct size
+  __u16 size = 0;
+  if (!extension_unit_control(unit, selector, UVC_GET_LEN, 2, (unsigned char*)&size))
+  {
+    ROS_ERROR("Cannot retrieve size for query.");
+    return false;
+  }
+  // now call set with known size
+  return extension_unit_control(unit, selector, UVC_SET_CUR, size, data);
 }
 
 void UsbCam::close_device(void)
